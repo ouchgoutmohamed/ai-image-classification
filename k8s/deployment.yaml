@@ -17,7 +17,7 @@ spec:
       containers:
       - name: image-classifier
         image: image-classifier:latest
-        imagePullPolicy: Never  # For local development with Minikube
+        imagePullPolicy: Never  
         ports:
         - containerPort: 8000
         resources:
