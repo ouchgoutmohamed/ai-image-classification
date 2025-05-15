@@ -24,9 +24,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY api/ /app/api/
 
-# Create necessary directories
-RUN mkdir -p /app/templates /app/static
-
 # Run with a non-root user for better security
 RUN adduser --disabled-password --gecos "" appuser
 USER appuser

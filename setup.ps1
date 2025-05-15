@@ -31,13 +31,15 @@ if ($minikubeStatus -contains "host: Stopped") {
 Write-Host "Configuring Docker to use Minikube's Docker daemon..." -ForegroundColor Yellow
 & minikube docker-env | Invoke-Expression
 
-# Create directories if they don't exist
-if (-not (Test-Path "templates")) {
-    New-Item -ItemType Directory -Path "templates" | Out-Null
+# Ensure directories exist (they should already be part of the repository)
+if (-not (Test-Path "api\templates")) {
+    Write-Host "Templates directory not found in repository. Creating it..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Path "api\templates" | Out-Null
 }
 
-if (-not (Test-Path "static")) {
-    New-Item -ItemType Directory -Path "static" | Out-Null
+if (-not (Test-Path "api\static")) {
+    Write-Host "Static files directory not found in repository. Creating it..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Path "api\static" | Out-Null
 }
 
 # Build the Docker image
