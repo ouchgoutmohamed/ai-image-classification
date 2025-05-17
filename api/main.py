@@ -9,9 +9,36 @@ import io
 from pydantic import BaseModel
 import pathlib
 import sys
+import logging
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("image-classifier-api")
+
+# Log startup information
+logger.info("Starting Image Classification API")
+start_time = time.time()
 
 # Ensure the correct import path
-from api.model import MobileNetClassifier
+# Try both import styles to handle different execution contexts
+try:
+    logger.info("Attempting to import from api.model...")
+    from api.model import MobileNetClassifier
+    logger.info("Successfully imported from api.model")
+except ImportError as e:
+    logger.warning(f"Import from api.model failed: {e}")
+    try:
+        # This import works when run from the app directory
+        logger.info("Attempting to import from model...")
+        from model import MobileNetClassifier
+        logger.info("Successfully imported from model")
+    except ImportError as e:
+        logger.error(f"All import attempts failed: {e}")
+        raise
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -21,7 +48,15 @@ app = FastAPI(
 )
 
 # Initialize the classifier
-classifier = MobileNetClassifier()
+logger.info("Initializing MobileNet classifier...")
+classifier_start_time = time.time()
+try:
+    classifier = MobileNetClassifier()
+    classifier_init_time = time.time() - classifier_start_time
+    logger.info(f"MobileNet classifier initialized successfully in {classifier_init_time:.2f} seconds")
+except Exception as e:
+    logger.error(f"Failed to initialize MobileNet classifier: {e}")
+    raise
 
 # Get the directory where this file is located
 CURRENT_DIR = pathlib.Path(__file__).parent.absolute()
@@ -80,8 +115,45 @@ async def predict(file: UploadFile = File(...)):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint to verify API is running"""
-    return {"status": "ok"}
+    """
+    Health check endpoint to verify API is running and model is loaded
+    
+    The endpoint checks:
+    1. If the API is running
+    2. If the classifier is initialized
+    3. If the model is loaded and can make basic predictions
+    
+    Returns:
+        Dict with status and model readiness information
+    """
+    try:
+        # Check if classifier and model are initialized
+        if classifier and classifier.model:
+            # Create a tiny black image (1x1 pixel) for a quick model sanity check
+            import numpy as np
+            test_img = np.zeros((1, 224, 224, 3), dtype=np.float32)
+            
+            # Run a quick prediction to ensure the model works
+            # This only verifies model functionality, not accuracy
+            _ = classifier.model.predict(test_img, verbose=0)
+            
+            return {
+                "status": "ok",
+                "model_loaded": True,
+                "message": "API is healthy and model is ready for predictions"
+            }
+        else:
+            return {
+                "status": "warning",
+                "model_loaded": False,
+                "message": "API is running but model is not fully initialized"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "model_loaded": False,
+            "message": f"API is running but model check failed: {str(e)}"
+        }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
